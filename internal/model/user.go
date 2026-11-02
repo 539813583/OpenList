@@ -47,6 +47,9 @@ type User struct {
 	BasePath string `json:"base_path"`                                 // base path
 	Role     int    `json:"role"`                                      // user's role
 	Disabled bool   `json:"disabled"`
+    DisableWebLogin bool `json:"disable_web_login"`
+	WebDavMaxOnline int  `json:"webdav_max_online"`
+
 	// Determine permissions by bit
 	//   0:  can see hidden files
 	//   1:  can access without password
