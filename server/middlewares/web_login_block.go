@@ -2,7 +2,7 @@ package middlewares
 
 import (
 	"net/http"
-	"openlist/server/model"
+	"openlist/internal/model"
 )
 
 func BlockWebLogin(next http.Handler) http.Handler {
