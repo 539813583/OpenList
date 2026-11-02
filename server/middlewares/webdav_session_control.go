@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
-	"openlist/server/model"
+	"openlist/internal/model"
 	"openlist/server/pkg/rediscli"
 	"time"
 )
