@@ -1,17 +1,20 @@
 package middlewares
 
 import (
-	"net/http"
+	"github.com/gin-gonic/gin"
 	"openlist/internal/model"
 )
 
-func BlockWebLogin(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user, ok := r.Context().Value("user").(*model.User)
-		if ok && user.DisableWebLogin {
-			http.Error(w, "该账号禁止网页登录", http.StatusForbidden)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
+func BlockWebLogin(c *gin.Context) {
+	user, ok := c.Get("user")
+	if !ok {
+		c.Next()
+		return
+	}
+	u, ok := user.(*model.User)
+	if ok && u.DisableWebLogin {
+		c.AbortWithStatusJSON(403, gin.H{"error": "该账号禁止网页登录"})
+		return
+	}
+	c.Next()
 }
