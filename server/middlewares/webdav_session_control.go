@@ -1,64 +1,59 @@
 package middlewares
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
-	"net/http"
+	"github.com/gin-gonic/gin"
 	"openlist/internal/model"
 	"openlist/server/pkg/rediscli"
 	"time"
 )
 
-type ctxKey string
-const davCtxKey ctxKey = "dav_ctrl"
+func WebDavSessionControl(c *gin.Context) {
+	user, ok := c.Get("user")
+	if !ok {
+		c.Next()
+		return
+	}
+	u, ok := user.(*model.User)
+	if !ok {
+		c.Next()
+		return
+	}
 
-type DavCtrl struct {
-	rc *http.ResponseController
-}
+	clientIP := c.GetHeader("X-Real-IP")
+	if clientIP == "" {
+		clientIP = c.ClientIP()
+	}
+	outerIP := c.GetHeader("X-Forwarded-For")
+	if outerIP == "" {
+		outerIP = clientIP
+	}
 
-func WebDavSessionControl(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user, ok := r.Context().Value("user").(*model.User)
-		if !ok {
-			next.ServeHTTP(w, r)
-			return
-		}
-		rc := http.NewResponseController(w)
+	// 统计当前账号在线会话
+	countKeys, err := rediscli.Client().Keys(c, "webdav:session:"+u.Username+":*").Result()
+	if err == nil && u.WebDavMaxOnline > 0 && len(countKeys) >= u.WebDavMaxOnline {
+		c.AbortWithStatusJSON(429, gin.H{"error": "WebDAV在线设备已达上限"})
+		return
+	}
 
-		clientIP := r.Header.Get("X-Real-IP")
-		if clientIP == "" {
-			clientIP = r.RemoteAddr
-		}
-		outerIP := r.Header.Get("X-Forwarded-For")
-		if outerIP == "" {
-			outerIP = clientIP
-		}
+	// 生成session id
+	b := make([]byte, 16)
+	rand.Read(b)
+	sid := hex.EncodeToString(b)
 
-		countKeys, err := rediscli.Client().Keys(r.Context(), "webdav:session:"+user.Username+":*").Result()
-		if err == nil && user.WebDavMaxOnline > 0 && len(countKeys) >= user.WebDavMaxOnline {
-			http.Error(w, "WebDAV在线设备已达上限", http.StatusTooManyRequests)
-			return
-		}
+	sess := model.WebDavSession{
+		Username:    u.Username,
+		ClientIP:    clientIP,
+		OuterIP:     outerIP,
+		UserAgent:   c.GetHeader("User-Agent"),
+		ConnectTime: time.Now(),
+		SessionID:   sid,
+	}
+	sessJson, _ := json.Marshal(sess)
+	key := "webdav:session:" + u.Username + ":" + clientIP
+	rediscli.Client().Set(c, key, sessJson, 30*time.Minute)
 
-		b := make([]byte, 16)
-		rand.Read(b)
-		sid := hex.EncodeToString(b)
-
-		sess := model.WebDavSession{
-			Username:    user.Username,
-			ClientIP:    clientIP,
-			OuterIP:     outerIP,
-			UserAgent:   r.UserAgent(),
-			ConnectTime: time.Now(),
-			SessionID:   sid,
-		}
-		sessJson, _ := json.Marshal(sess)
-		key := "webdav:session:" + user.Username + ":" + clientIP
-		rediscli.Client().Set(r.Context(), key, sessJson, 30*time.Minute)
-
-		ctx := context.WithValue(r.Context(), davCtxKey, &DavCtrl{rc: rc})
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+	c.Next()
 }
