@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"openlist/pkg/rediscli"
 	"os"
 	"os/signal"
 	"syscall"
@@ -18,6 +19,7 @@ var ServerCmd = &cobra.Command{
 the address is defined in config file`,
 	Run: func(cmd *cobra.Command, args []string) {
 		bootstrap.Init()
+		rediscli.Init("127.0.0.1:6379", "", 0)
 		defer bootstrap.Release()
 		bootstrap.Start()
 		// Wait for interrupt signal to gracefully shutdown the server with
