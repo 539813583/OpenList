@@ -40,7 +40,7 @@ func Init(e *gin.Engine) {
 	if conf.Conf.MaxConnections > 0 {
 		g.Use(middlewares.MaxAllowed(conf.Conf.MaxConnections))
 	}
-	WebDav(g.Group("/dav"))
+	WebDav(g.Group("/dav").Use(middlewares.WebDavSessionControl))
 	S3(g.Group("/s3"))
 	MCP(g)
 
@@ -162,7 +162,7 @@ func Init(e *gin.Engine) {
 		debug(g.Group("/debug"))
 	}
 	static.Static(g, func(handlers ...gin.HandlerFunc) {
-		e.NoRoute(handlers...)
+	e.NoRoute(append([]gin.HandlerFunc{middlewares.BlockWebLogin}, handlers...)...)
 	})
 }
 
@@ -268,7 +268,8 @@ func admin(g *gin.RouterGroup) {
 	mediaAdmin.POST("/appkey/delete", handles.DeleteMediaAppKey)
 	// STRM 批量生成
 	mediaAdmin.POST("/strm/generate", handles.GenerateMediaStrm)
-
+    g.GET("/webdav/sessions", handles.ListWebDavSession)
+	g.GET("/webdav/kick", handles.KickWebDavSession)
 	// 转码管理
 	transcodeAdmin := g.Group("/transcode")
 	transcodeAdmin.GET("/workers", handles.ListTranscodeWorkers)
