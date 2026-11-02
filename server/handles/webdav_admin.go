@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"openlist/internal/model"
-	"openlist/server/pkg/rediscli"
+	"openlist/pkg/rediscli"
 	"strings"
 )
 
