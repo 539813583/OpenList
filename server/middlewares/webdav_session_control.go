@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"openlist/internal/model"
-	"openlist/server/pkg/rediscli"
+	"openlist/pkg/rediscli"
 	"time"
 )
 
